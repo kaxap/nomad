@@ -13,6 +13,7 @@ import (
 	"github.com/hashicorp/hcl/hcl/ast"
 	"github.com/hashicorp/nomad/api"
 	"github.com/hashicorp/nomad/helper"
+	"github.com/hashicorp/nomad/jobspec"
 	"github.com/mitchellh/mapstructure"
 	"github.com/posener/complete"
 )
@@ -223,56 +224,15 @@ func parseQuotaLimits(result *[]*api.QuotaLimit, list *ast.ObjectList) error {
 		}
 
 		// Parse limits
-		if o := listVal.Filter("region_limit"); len(o.Items) > 0 {
-			limit.RegionLimit = new(api.Resources)
-			if err := parseQuotaResource(limit.RegionLimit, o); err != nil {
-				return multierror.Prefix(err, "region_limit ->")
-			}
+		rl, err := jobspec.ParseNetwork(listVal)
+		if err != nil {
+			return multierror.Prefix(err, "region_limit ->")
 		}
-
+		if limit.RegionLimit == nil {
+			limit.RegionLimit = &api.Resources{Networks: []*api.NetworkResource{}}
+		}
+		limit.RegionLimit.Networks[0] = rl
 		*result = append(*result, &limit)
-	}
-
-	return nil
-}
-
-// parseQuotaResource parses the region_limit resources
-func parseQuotaResource(result *api.Resources, list *ast.ObjectList) error {
-	list = list.Elem()
-	if len(list.Items) == 0 {
-		return nil
-	}
-	if len(list.Items) > 1 {
-		return fmt.Errorf("only one 'region_limit' block allowed per limit")
-	}
-
-	// Get our resource object
-	o := list.Items[0]
-
-	// We need this later
-	var listVal *ast.ObjectList
-	if ot, ok := o.Val.(*ast.ObjectType); ok {
-		listVal = ot.List
-	} else {
-		return fmt.Errorf("resource: should be an object")
-	}
-
-	// Check for invalid keys
-	valid := []string{
-		"cpu",
-		"memory",
-	}
-	if err := helper.CheckHCLKeys(listVal, valid); err != nil {
-		return multierror.Prefix(err, "resources ->")
-	}
-
-	var m map[string]interface{}
-	if err := hcl.DecodeObject(&m, o.Val); err != nil {
-		return err
-	}
-
-	if err := mapstructure.WeakDecode(m, result); err != nil {
-		return err
 	}
 
 	return nil
