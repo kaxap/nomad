@@ -115,9 +115,8 @@ func TestQuotaApplyNetwork(t *testing.T) {
 	}
 
 	cases := map[string]example{
-		`limit {region = "global", region_limit {network {mbits = 20}}}`: example{
+		`limit {region = "global", region_limit {network {mbits = 20}}}`: {
 			&api.QuotaSpec{
-				// Name: "global",
 				Limits: []*api.QuotaLimit{{
 					Region: "global",
 					RegionLimit: &api.Resources{
