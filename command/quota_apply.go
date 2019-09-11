@@ -224,15 +224,73 @@ func parseQuotaLimits(result *[]*api.QuotaLimit, list *ast.ObjectList) error {
 		}
 
 		// Parse limits
-		rl, err := jobspec.ParseNetwork(listVal)
-		if err != nil {
-			return multierror.Prefix(err, "region_limit ->")
+		if o := listVal.Filter("region_limit"); len(o.Items) > 0 {
+			limit.RegionLimit = new(api.Resources)
+			if err := parseQuotaResource(limit.RegionLimit, o); err != nil {
+				return multierror.Prefix(err, "region_limit ->")
+			}
 		}
-		if limit.RegionLimit == nil {
-			limit.RegionLimit = &api.Resources{Networks: []*api.NetworkResource{}}
-		}
-		limit.RegionLimit.Networks[0] = rl
+
 		*result = append(*result, &limit)
+	}
+
+	return nil
+}
+
+// parseQuotaResource parses the region_limit resources
+func parseQuotaResource(result *api.Resources, list *ast.ObjectList) error {
+	list = list.Elem()
+	if len(list.Items) == 0 {
+		return nil
+	}
+	if len(list.Items) > 1 {
+		return fmt.Errorf("only one 'region_limit' block allowed per limit")
+	}
+
+	// Get our resource object
+	o := list.Items[0]
+
+	// We need this later
+	var listVal *ast.ObjectList
+	if ot, ok := o.Val.(*ast.ObjectType); ok {
+		listVal = ot.List
+	} else {
+		return fmt.Errorf("resource: should be an object")
+	}
+
+	// Check for invalid keys
+	valid := []string{
+		"cpu",
+		"memory",
+		"network",
+	}
+	if err := helper.CheckHCLKeys(listVal, valid); err != nil {
+		return multierror.Prefix(err, "resources ->")
+	}
+
+	var m map[string]interface{}
+	if err := hcl.DecodeObject(&m, o.Val); err != nil {
+		return err
+	}
+
+	if err := mapstructure.WeakDecode(m, result); err != nil {
+		return err
+	}
+
+	// Find the network ObjectList, parse it
+	nw := listVal.Filter("network")
+	if len(nw.Items) < 1 {
+		return nil
+	}
+	rl, err := jobspec.ParseNetwork(nw)
+	if err != nil {
+		return multierror.Prefix(err, "resources ->")
+	}
+	if rl != nil {
+		if rl.Mode != "" || rl.HasPorts() {
+			return fmt.Errorf("resources -> network only allows mbits")
+		}
+		result.Networks = []*api.NetworkResource{rl}
 	}
 
 	return nil
