@@ -269,6 +269,10 @@ CREATE:
 	container, err := d.createContainer(client, containerCfg, driverConfig.Image)
 	if err != nil {
 		d.logger.Error("failed to create container", "error", err)
+		client.RemoveContainer(docker.RemoveContainerOptions{
+			ID:    containerCfg.Name,
+			Force: true,
+		})
 		return nil, nil, nstructs.WrapRecoverable(fmt.Sprintf("failed to create container: %v", err), err)
 	}
 
