@@ -5531,6 +5531,14 @@ func (t *Task) Validate(ephemeralDisk *EphemeralDisk, jobType string, tgServices
 			mErr.Errors = append(mErr.Errors, serviceErr)
 		}
 	}
+
+	// Validation for volumes
+	for _, vm := range t.VolumeMounts {
+		if !MountPropagationModeIsValid(vm.PropagationMode) {
+			mErr.Errors = append(mErr.Errors, fmt.Errorf("Volume Mount has an invalid propagation mode: %s", vm.PropagationMode))
+		}
+	}
+
 	return mErr.ErrorOrNil()
 }
 
