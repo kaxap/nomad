@@ -303,6 +303,10 @@ CREATE:
 		// the container is started
 		runningContainer, err := client.InspectContainer(container.ID)
 		if err != nil {
+			client.RemoveContainer(docker.RemoveContainerOptions{
+				ID:    container.ID,
+				Force: true,
+			})
 			msg := "failed to inspect started container"
 			d.logger.Error(msg, "error", err)
 			return nil, nil, nstructs.NewRecoverableError(fmt.Errorf("%s %s: %s", msg, container.ID, err), true)
