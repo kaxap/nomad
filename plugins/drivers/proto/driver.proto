@@ -331,6 +331,7 @@ message CreateNetworkRequest {
 message CreateNetworkResponse {
 
     NetworkIsolationSpec isolation_spec = 1;
+    bool created = 2;
 }
 
 message DestroyNetworkRequest {
