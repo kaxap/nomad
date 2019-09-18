@@ -924,12 +924,23 @@ func (s *Server) addRaftPeer(m serf.Member, parts *serverParts) error {
 
 	// Attempt to add as a peer
 	switch {
+	case minRaftProtocol >= 3 && parts.RaftVersion == 2:
+		// the last server re-added in an upgrade gets here, with minRaftProtocol 3
+		s.logger.Debug("HUCKLEBERRY %s %s", parts.ID, string(addr))
+		s.logger.Info("HUCKLEBERRY %s %s", parts.ID, string(addr))
+		addFuture := s.raft.AddNonvoter(raft.ServerID(parts.ID), raft.ServerAddress(addr), 0, 0)
+		if err := addFuture.Error(); err != nil {
+			s.logger.Error("failed to add raft peer", "error", err)
+			return err
+		}
+
 	case minRaftProtocol >= 3:
 		addFuture := s.raft.AddNonvoter(raft.ServerID(parts.ID), raft.ServerAddress(addr), 0, 0)
 		if err := addFuture.Error(); err != nil {
 			s.logger.Error("failed to add raft peer", "error", err)
 			return err
 		}
+
 	case minRaftProtocol == 2 && parts.RaftVersion >= 3:
 		addFuture := s.raft.AddVoter(raft.ServerID(parts.ID), raft.ServerAddress(addr), 0, 0)
 		if err := addFuture.Error(); err != nil {
