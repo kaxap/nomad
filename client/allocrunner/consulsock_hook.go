@@ -159,7 +159,12 @@ func (s *sockProxy) run(alloc *structs.Allocation) error {
 	hostGRPCSockPath := filepath.Join(s.allocDir.AllocDir, allocdir.AllocGRPCSocket)
 	listener, err := net.Listen("unix", hostGRPCSockPath)
 	if err != nil {
-		return fmt.Errorf("unable to create unix socket for Consul gRPC endpoint: %v", err)
+		os.Remove(hostGRPCSockPath)
+		listener, err = net.Listen("unix", hostGRPCSockPath)
+		if err != nil {
+			return fmt.Errorf(
+				"unable to create unix socket for Consul gRPC endpoint: %v", err)
+		}
 	}
 
 	// The gRPC socket should be usable by all users in case a task is
