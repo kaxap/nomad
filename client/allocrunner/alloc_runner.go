@@ -270,6 +270,14 @@ func (ar *allocRunner) Run() {
 	ar.runTasks()
 
 POST:
+	ar.destroyedLock.Lock()
+	shuttingDown := ar.shutdownLaunched
+	ar.destroyedLock.Unlock() // postrun is synchronous so don't defer this
+
+	if shuttingDown {
+		return
+	}
+
 	// Run the postrun hooks
 	if err := ar.postrun(); err != nil {
 		ar.logger.Error("postrun failed", "error", err)
