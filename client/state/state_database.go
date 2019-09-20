@@ -128,6 +128,9 @@ func NewBoltStateDB(logger hclog.Logger, stateDir string) (StateDB, error) {
 	// Create or open the boltdb state database
 	db, err := boltdd.Open(fn, 0600, timeout)
 	if err != nil {
+		if err == bolt.ErrTimeout {
+			return nil, fmt.Errorf("timed out while opening database, is another Nomad process accessing data_dir %s?", stateDir)
+		}
 		return nil, fmt.Errorf("failed to create state database: %v", err)
 	}
 
